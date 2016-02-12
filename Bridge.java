@@ -1,25 +1,27 @@
-import java.util.*;
 
-
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.atomic.AtomicInteger;
 /**
  *  Bridge Class: Responsible for keeping and maintaing all states and locks
  * 
  */
 public class Bridge{
+	public enum LockType{
+		LeftLock,RightLock, NoLock
+	}
+	public enum Direction{
+		LeftDirection, RightDirection
+	}
 	ReentrantLock reentrantLock = new ReentrantLock();
 	Condition leftWaitingQueue = reentrantLock.newCondition();
 	Condition rightWaitingQueue = reentrantLock.newCondition();
 	AtomicInteger leftWaitingCount = new AtomicInteger();
 	AtomicInteger rightWaitingCount = new AtomicInteger();
 	AtomicInteger carOnBridgeCount = new AtomicInteger();
-	Lock lock = NoLock;
+
+	LockType lock = LockType.NoLock;
 	private final int capacity;
-	public enum Lock{
-		LeftLock,RightLock, NoLock
-	}
-	public enum Direction{
-		LeftDirection, RightDirection
-	}
 	public Bridge(int capacity){
 		this.capacity = capacity;
 	}
@@ -29,23 +31,23 @@ public class Bridge{
 		//if there are already three cars on bridge
 		if(carOnBridgeCount.get() == capacity){
 			//increase the waiting counter and wait on queue
-			waitAndWakeUp(dir,"cause bridge is full");
+			waitAndWakeUp(name,dir,"cause bridge is full");
 		}
 		else{
-			if(lock == NoLock ){
+			if(lock == LockType.NoLock ){
 				carOnBridgeCount.incrementAndGet();
 			}	
-			else if(lock == dir){
+			else if(isSameDir(lock,dir)){
 				if(getWaitingCount(dir).get() != 0){
 					//even though cars on bridge is not full, but there is car on same side waiting for it
 					//which means the bridge has already allowed three cars from same direction to across it
 					//thus the reverse side should have the higher priority, this car should be waiting
-					waitAndWakeUp(dir,"cause there is car waiting on same side");
+					waitAndWakeUp(name,dir,"cause there is car waiting on same side");
 				}	
 			}
 			else{
 				//increase the waiting counter and wait on queue
-				waitAndWakeUp(dir,"cause of different direction");
+				waitAndWakeUp(name,dir,"cause of different direction");
 			}
 		}
 		reentrantLock.unlock();
@@ -54,9 +56,9 @@ public class Bridge{
 		reentrantLock.lock();
 		Direction dir = getDirection(name);
 		carOnBridgeCount.decrementAndGet();
-		if(carOnBridgeCount == 0{
+		if(carOnBridgeCount.get() == 0){
 			//this is the last car that leave the bridge, should do addition tasks to wake waiting car	
-			if(getWaitingCount(getReverseDirection(dir))).get() > 0){
+			if(getWaitingCount(getReverseDirection(dir)).get() > 0){
 				//there is car waiting on another side, wake up capacity size of them
 				Condition queue = getWaitingQueue(getReverseDirection(dir));
 				lock = getReverseLock(dir);
@@ -73,48 +75,52 @@ public class Bridge{
 			}
 			else{
 				//no car waiting, just need to set the lock type 
-				lock = NoLock;
+				lock = LockType.NoLock;
 			}
 		}
 		reentrantLock.unlock();
 	}
 
-	Lock getReverseLock(Direction dir){
-		if(dir == LeftDirection){
-			return RightLock;
+	LockType getReverseLock(Direction dir){
+		if(dir == Direction.LeftDirection){
+			return LockType.RightLock;
 		}
 		else{
-			return LeftLock;
+			return LockType.LeftLock;
 		}
 	}
 	Direction getReverseDirection(Direction dir){
-		if(dir == LeftDirection){
-			return RightDirection;
+		if(dir == Direction.LeftDirection){
+			return Direction.RightDirection;
 		}
 		else{
-			return LeftDirection;
+			return Direction.LeftDirection;
 		}
 	}
 	Direction getDirection(String name){
 		if(name.indexOf("Left")!=-1){
-			return LeftDirection;
+			return Direction.LeftDirection;
 		}
 		else{
-			return RightDirection;
+			return Direction.RightDirection;
 		}
 	}
 
-	void waitAndWakeUp(Direction dir, String reason){
+	void waitAndWakeUp(String name,Direction dir, String reason){
 		getWaitingCount(dir).incrementAndGet();	
 		System.out.println(name+" is waiting on queue cause "+reason+". Cars on bridge:"+carOnBridgeCount.get());
-		getWaitingQueue(dir).await();
+		try{
+			getWaitingQueue(dir).await();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		carOnBridgeCount.incrementAndGet();
 		getWaitingCount(dir).decrementAndGet();
 		System.out.println(name+" is waking up from queue and begin to enter bridge. Cars on bridge:"+carOnBridgeCount.get());
 	}
 
 	AtomicInteger getWaitingCount(Direction dir){
-		if(dir == LeftDirection){
+		if(dir == Direction.LeftDirection){
 			return leftWaitingCount;
 		}
 		else{
@@ -122,11 +128,20 @@ public class Bridge{
 		}
 	}
 	Condition getWaitingQueue(Direction dir){
-		if(dir == LeftDirection){
+		if(dir == Direction.LeftDirection){
 			return leftWaitingQueue;
 		}
 		else{
 			return rightWaitingQueue;
 		}
+	}
+	boolean isSameDir(LockType lock, Direction dir){
+		if(lock == LockType.LeftLock && dir==Direction.LeftDirection){
+			return true;
+		}
+		else if(lock == LockType.RightLock && dir == Direction.RightDirection){
+			return true;
+		}
+		return false;
 	}
 }

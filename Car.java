@@ -16,7 +16,11 @@ public class Car extends Thread{
 	public void run(){
 		bridge.enterBridge(name);
 		//enter bridge
-		Thread.sleep(500);
+		try{
+			Thread.sleep(500);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		bridge.leaveBridge(name);
 		//leave bridge
 
