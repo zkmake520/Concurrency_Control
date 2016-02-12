@@ -19,11 +19,12 @@ public class Bridge{
 	AtomicInteger leftWaitingCount = new AtomicInteger();
 	AtomicInteger rightWaitingCount = new AtomicInteger();
 	AtomicInteger carOnBridgeCount = new AtomicInteger();
-
+	public int carSize;
 	LockType lock = LockType.NoLock;
 	private final int capacity;
-	public Bridge(int capacity){
+	public Bridge(int capacity,int carSize){
 		this.capacity = capacity;
+		this.carSize = carSize;
 	}
 	public void enterBridge(String name){
 		reentrantLock.lock();
@@ -37,7 +38,7 @@ public class Bridge{
 			if(lock == LockType.NoLock ){
 				carOnBridgeCount.incrementAndGet();
 				lock = getLock(dir);
-				System.out.println(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
+				Log.out(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
 			}	
 			else if(isSameDir(lock,dir)){
 				if(getWaitingCount(dir).get() != 0){
@@ -48,18 +49,21 @@ public class Bridge{
 				}	
 				else{
 					carOnBridgeCount.incrementAndGet();
-					System.out.println(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
+					Log.out(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
 				}
 			}
 			else{
 				//increase the waiting counter and wait on queue
 				waitAndWakeUp(name,dir,"different direction");
+				// Log.out(name+" is ffffffffffffentering bridge. Car on bridge:"+carOnBridgeCount.get());
+
 			}
 		}
 		reentrantLock.unlock();
 	}
 	public void leaveBridge(String name){
 		reentrantLock.lock();
+		Log.out(name+" is preparing to leaving bridge. Car on bridge:"+carOnBridgeCount.get());
 		Direction dir = getDirection(name);
 		carOnBridgeCount.decrementAndGet();
 		if(carOnBridgeCount.get() == 0){
@@ -84,6 +88,7 @@ public class Bridge{
 				lock = LockType.NoLock;
 			}
 		}
+		Log.out(name+" is leaving bridge. Car on bridge:"+carOnBridgeCount.get());
 		reentrantLock.unlock();
 	}
 
@@ -122,7 +127,7 @@ public class Bridge{
 
 	void waitAndWakeUp(String name,Direction dir, String reason){
 		getWaitingCount(dir).incrementAndGet();	
-		System.out.println(name+" is waiting on queue cause "+reason+". Cars on bridge:"+carOnBridgeCount.get());
+		Log.out(name+" is waiting on queue cause "+reason+". Cars on bridge:"+carOnBridgeCount.get());
 		try{
 			getWaitingQueue(dir).await();
 		}catch(Exception e){
@@ -130,7 +135,7 @@ public class Bridge{
 		}
 		carOnBridgeCount.incrementAndGet();
 		getWaitingCount(dir).decrementAndGet();
-		System.out.println(name+" is waking up from queue and begin to enter bridge. Cars on bridge:"+carOnBridgeCount.get());
+		Log.out(name+" is waking up from queue and begin to enter bridge. Cars on bridge:"+carOnBridgeCount.get());
 	}
 
 	AtomicInteger getWaitingCount(Direction dir){
