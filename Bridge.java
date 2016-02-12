@@ -31,23 +31,29 @@ public class Bridge{
 		//if there are already three cars on bridge
 		if(carOnBridgeCount.get() == capacity){
 			//increase the waiting counter and wait on queue
-			waitAndWakeUp(name,dir,"cause bridge is full");
+			waitAndWakeUp(name,dir,"bridge is full");
 		}
 		else{
 			if(lock == LockType.NoLock ){
 				carOnBridgeCount.incrementAndGet();
+				lock = getLock(dir);
+				System.out.println(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
 			}	
 			else if(isSameDir(lock,dir)){
 				if(getWaitingCount(dir).get() != 0){
 					//even though cars on bridge is not full, but there is car on same side waiting for it
 					//which means the bridge has already allowed three cars from same direction to across it
 					//thus the reverse side should have the higher priority, this car should be waiting
-					waitAndWakeUp(name,dir,"cause there is car waiting on same side");
+					waitAndWakeUp(name,dir,"there is car waiting on same side");
 				}	
+				else{
+					carOnBridgeCount.incrementAndGet();
+					System.out.println(name+" is entering bridge. Car on bridge:"+carOnBridgeCount.get());
+				}
 			}
 			else{
 				//increase the waiting counter and wait on queue
-				waitAndWakeUp(name,dir,"cause of different direction");
+				waitAndWakeUp(name,dir,"different direction");
 			}
 		}
 		reentrantLock.unlock();
@@ -81,6 +87,14 @@ public class Bridge{
 		reentrantLock.unlock();
 	}
 
+	LockType getLock(Direction dir){
+		if(dir == Direction.LeftDirection){
+			return LockType.LeftLock;
+		}
+		else{
+			return LockType.RightLock;
+		}
+	}
 	LockType getReverseLock(Direction dir){
 		if(dir == Direction.LeftDirection){
 			return LockType.RightLock;
